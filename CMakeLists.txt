@@ -33,7 +33,9 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
-        User/canio.c)
+        User/canio.c
+        User/pid.c
+        User/gm6020.c)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -68,3 +70,46 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+# Generate common firmware images next to the ELF file.
+set(PROJECT_HEX "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex")
+set(PROJECT_BIN "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin")
+
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+    BYPRODUCTS
+        ${PROJECT_HEX}
+        ${PROJECT_BIN}
+    COMMAND ${CMAKE_OBJCOPY} -O ihex
+        $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${PROJECT_HEX}
+    COMMAND ${CMAKE_OBJCOPY} -O binary
+        $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${PROJECT_BIN}
+    COMMAND ${CMAKE_SIZE} --format=berkeley
+        $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+    COMMENT "Generating ELF, HEX and BIN firmware images"
+    VERBATIM
+)
+
+set_property(TARGET ${CMAKE_PROJECT_NAME} APPEND PROPERTY
+    ADDITIONAL_CLEAN_FILES "${PROJECT_HEX};${PROJECT_BIN}"
+)
+
+# This target is intentionally manual: it is never run as part of a normal build.
+find_program(STM32_PROGRAMMER_CLI
+    NAMES STM32_Programmer_CLI
+    HINTS "D:/Program Files/STM32CubeCLT_1.22.0/STM32CubeProgrammer/bin"
+)
+
+if(STM32_PROGRAMMER_CLI)
+    add_custom_target(flash_stlink
+        COMMAND ${STM32_PROGRAMMER_CLI}
+            -c port=SWD
+            -w ${PROJECT_HEX}
+            -v
+            -rst
+        DEPENDS ${CMAKE_PROJECT_NAME} ${PROJECT_HEX}
+        COMMENT "Programming and verifying with STM32CubeProgrammer over ST-Link"
+        VERBATIM
+    )
+else()
+    message(STATUS "STM32CubeProgrammer CLI not found; flash_stlink target is unavailable")
+endif()

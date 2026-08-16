@@ -18,11 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "canio.h"
-#include <string.h>
+#include "gm6020.h"
+#include "task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,7 +44,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan1;
+UART_HandleTypeDef huart1;
 
+osThreadId defaultTaskHandle;
+osThreadId myTask02Handle;
+osThreadId myTask03Handle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -51,6 +57,11 @@ CAN_HandleTypeDef hcan1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_CAN1_Init(void);
+static void MX_USART1_UART_Init(void);
+void StartDefaultTask(void const * argument);
+void Gimbal_task(void const * argument);
+void print(void const * argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,12 +101,54 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_CAN1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  GM6020_Init(&motor[1], 1U);
+  GM6020_Init(&motor[2], 2U);
 
   /* 初始化 CAN 通信模块（配置滤波器、启动外设、使能中断） */
   canio_init();
 
   /* USER CODE END 2 */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of myTask02 */
+  osThreadDef(myTask02, Gimbal_task, osPriorityAboveNormal, 0, 1024);
+  myTask02Handle = osThreadCreate(osThread(myTask02), NULL);
+
+  /* definition and creation of myTask03 */
+  osThreadDef(myTask03, print, osPriorityNormal, 0, 256);
+  myTask03Handle = osThreadCreate(osThread(myTask03), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -104,51 +157,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-    /* ---- 周期性发送 CAN 消息（每 500ms）---- */
-    static uint32_t last_send = 0;
-    static uint8_t  counter   = 0;
-
-    if (HAL_GetTick() - last_send >= 500) {
-        last_send = HAL_GetTick();
-
-        CanMsg_t tx_msg = {0};
-        tx_msg.id      = 0x123;            /* 标准帧 ID */
-        tx_msg.is_ext  = 0;
-        tx_msg.dlc     = 8;
-        tx_msg.data[0] = counter++;        /* 字节0: 自增计数 */
-        tx_msg.data[1] = 0x55;             /* 字节1: 固定模式 */
-        tx_msg.data[2] = 0xAA;             /* 字节2: 固定模式 */
-        tx_msg.data[3] = 0x01;
-        tx_msg.data[4] = 0x02;
-        tx_msg.data[5] = 0x04;
-        tx_msg.data[6] = 0x08;
-        tx_msg.data[7] = 0x10;
-
-        if (canio_send(&tx_msg) == HAL_OK) {
-            /* 发送成功 */
-        }
-    }
-
-    /* ---- 检查并处理接收的消息 ---- */
-    if (canio_available()) {
-        CanMsg_t rx_msg = {0};
-        if (canio_receive(&rx_msg) == HAL_OK) {
-            /* 收到消息：在这里实现你的处理逻辑
-             * 例如：根据 ID 执行不同操作、转发数据等
-             */
-            // 示例：如果收到 ID=0x321 的消息，回发确认
-            if (rx_msg.id == 0x321) {
-                CanMsg_t ack = {0};
-                ack.id      = 0x200;
-                ack.is_ext  = 0;
-                ack.dlc     = 1;
-                ack.data[0] = 0xAC;         /* ACK 标志 */
-                canio_send(&ack);
-            }
-        }
-    }
-
   }
   /* USER CODE END 3 */
 }
@@ -236,6 +244,27 @@ static void MX_CAN1_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -259,6 +288,97 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_Gimbal_task */
+/**
+* @brief Function implementing the myTask02 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Gimbal_task */
+__weak void Gimbal_task(void const * argument)
+{
+  /* USER CODE BEGIN Gimbal_task */
+  TickType_t last_wake_time = xTaskGetTickCount();
+  const TickType_t period = pdMS_TO_TICKS(2U);
+
+  for(;;)
+  {
+    int16_t control_output = GM6020_CalculateControl(&motor[2],
+                                                     GM6020_TARGET_ANGLE_DEG,
+                                                     HAL_GetTick());
+
+    /* Send one control frame every 2 ms, including zero output. */
+    (void)GM6020_SendMotor2Control(control_output);
+    vTaskDelayUntil(&last_wake_time, period);
+  }
+  /* USER CODE END Gimbal_task */
+}
+
+/* USER CODE BEGIN Header_print */
+/**
+* @brief Function implementing the myTask03 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_print */
+__weak void print(void const * argument)
+{
+  /* USER CODE BEGIN print */
+  static uint8_t message[] = "RM2027";
+  TickType_t last_wake_time = xTaskGetTickCount();
+  const TickType_t period = pdMS_TO_TICKS(20U);
+
+  for(;;)
+  {
+    (void)HAL_UART_Transmit(&huart1,
+                            message,
+                            (uint16_t)(sizeof(message) - 1U),
+                            5U);
+    vTaskDelayUntil(&last_wake_time, period);
+  }
+  /* USER CODE END print */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM10 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM10)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

@@ -1,10 +1,11 @@
 /**
  * @file    canio.c
  * @brief   CAN 总线收发实现
- *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 750kbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
+ *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 1Mbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
  */
 
 #include "canio.h"
+#include "gm6020.h"
 #include <string.h>
 
 /* ---- 外部变量：CubeMX 生成的 CAN1 句柄 ---- */
@@ -136,10 +137,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 }
 
 /* ================================================================
- * 用户回调（弱定义，可在 main.c 或其他文件中重写）
+ * 用户回调：只解析本工程使用的 GM6020 电机 2 反馈
  * ================================================================ */
-__weak void canio_on_received(const CanMsg_t *msg)
+void canio_on_received(const CanMsg_t *msg)
 {
-    /* 默认空实现：用户可覆盖此函数处理接收到的消息 */
-    (void)msg;
+    GM6020_ParseFeedback(&motor[2], msg);
 }

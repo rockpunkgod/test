@@ -70,6 +70,8 @@ void HAL_MspInit(void)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
+  /* PendSV_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
 
   /* USER CODE BEGIN MspInit 1 */
 
@@ -106,7 +108,7 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* hcan)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* CAN1 interrupt Init */
-    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
     /* USER CODE BEGIN CAN1_MspInit 1 */
 
@@ -145,6 +147,46 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
     /* USER CODE END CAN1_MspDeInit 1 */
   }
 
+}
+
+/**
+  * @brief UART MSP Initialization
+  * @param huart: UART handle pointer
+  * @retval None
+  */
+void HAL_UART_MspInit(UART_HandleTypeDef* huart)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(huart->Instance==USART1)
+  {
+    __HAL_RCC_USART1_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /**USART1 GPIO Configuration
+    PA9     ------> USART1_TX
+    PA10    ------> USART1_RX
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  }
+}
+
+/**
+  * @brief UART MSP De-Initialization
+  * @param huart: UART handle pointer
+  * @retval None
+  */
+void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
+{
+  if(huart->Instance==USART1)
+  {
+    __HAL_RCC_USART1_CLK_DISABLE();
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
+  }
 }
 
 /* USER CODE BEGIN 1 */

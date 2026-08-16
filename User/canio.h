@@ -2,7 +2,7 @@
  * @file    canio.h
  * @brief   CAN 总线收发封装接口
  *          适用于 STM32F407 + HAL 库
- *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 750kbps
+ *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 1Mbps
  */
 
 #ifndef CAN_DEMO_CANIO_H
@@ -29,7 +29,7 @@ typedef struct {
 void canio_init(void);
 
 /**
- * @brief  发送一条 CAN 消息（阻塞式，查询发送邮箱）
+ * @brief  向空闲邮箱提交一条 CAN 消息（非阻塞式）
  * @param  msg  指向待发送消息的指针
  * @retval HAL_OK / HAL_ERROR / HAL_TIMEOUT
  */
