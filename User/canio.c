@@ -12,8 +12,8 @@
 extern CAN_HandleTypeDef hcan1;
 
 /* ---- 模块级变量 ---- */
-static CanMsg_t g_rx_msg;           /* 接收缓冲 */
-static uint8_t   g_rx_flag = 0;     /* 新消息标志: 1=有新消息待处理 */
+static CanMsg_t g_rx_msg;                    /* 接收缓冲 */
+static volatile uint8_t g_rx_flag = 0U;      /* ISR 与任务共享的新消息标志 */
 
 /* ================================================================
  * 初始化
@@ -74,7 +74,7 @@ HAL_StatusTypeDef canio_send(const CanMsg_t *msg)
     tx_header.DLC    = msg->dlc;
     tx_header.TransmitGlobalTime = DISABLE;
 
-    /* 阻塞等待空闲邮箱，然后发送 */
+    /* 向当前空闲邮箱提交消息；HAL_CAN_AddTxMessage() 本身不等待发送完成。 */
     uint32_t tx_mailbox = 0;
     return HAL_CAN_AddTxMessage(&hcan1, &tx_header, msg->data, &tx_mailbox);
 }
@@ -89,15 +89,28 @@ uint8_t canio_available(void)
 
 HAL_StatusTypeDef canio_receive(CanMsg_t *msg)
 {
+    uint32_t primask;
+
     if (msg == NULL) return HAL_ERROR;
 
+    /* 防止 CAN RX 中断在复制过程中改写共享缓冲区。 */
+    primask = __get_PRIMASK();
+    __disable_irq();
+
     if (g_rx_flag == 0) {
+        if (primask == 0U) {
+            __enable_irq();
+        }
         return HAL_ERROR;   /* FIFO 空 */
     }
 
     /* 从模块缓冲复制到用户缓冲 */
     memcpy(msg, &g_rx_msg, sizeof(CanMsg_t));
-    g_rx_flag = 0;
+    g_rx_flag = 0U;
+
+    if (primask == 0U) {
+        __enable_irq();
+    }
 
     return HAL_OK;
 }

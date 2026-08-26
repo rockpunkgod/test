@@ -25,6 +25,7 @@
 #include "canio.h"
 #include "gm6020.h"
 #include "task.h"
+#include "vofa.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,6 +111,11 @@ int main(void)
   /* 初始化 CAN 通信模块（配置滤波器、启动外设、使能中断） */
   canio_init();
 
+  if (VOFA_Init(&vofa, &huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -134,11 +140,11 @@ int main(void)
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of myTask02 */
-  osThreadDef(myTask02, Gimbal_task, osPriorityAboveNormal, 0, 1024);
+  osThreadDef(myTask02, Gimbal_task, osPriorityAboveNormal, 0, 256);
   myTask02Handle = osThreadCreate(osThread(myTask02), NULL);
 
   /* definition and creation of myTask03 */
-  osThreadDef(myTask03, print, osPriorityNormal, 0, 256);
+  osThreadDef(myTask03, print, osPriorityNormal, 0, 512);
   myTask03Handle = osThreadCreate(osThread(myTask03), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -322,9 +328,7 @@ __weak void Gimbal_task(void const * argument)
 
   for(;;)
   {
-    int16_t control_output = GM6020_CalculateControl(&motor[2],
-                                                     GM6020_TARGET_ANGLE_DEG,
-                                                     HAL_GetTick());
+    int16_t control_output = GM6020_CalculateControl(&motor[2], HAL_GetTick());
 
     /* Send one control frame every 2 ms, including zero output. */
     (void)GM6020_SendMotor2Control(control_output);
@@ -343,16 +347,13 @@ __weak void Gimbal_task(void const * argument)
 __weak void print(void const * argument)
 {
   /* USER CODE BEGIN print */
-  static uint8_t message[] = "RM2027";
   TickType_t last_wake_time = xTaskGetTickCount();
   const TickType_t period = pdMS_TO_TICKS(20U);
 
   for(;;)
   {
-    (void)HAL_UART_Transmit(&huart1,
-                            message,
-                            (uint16_t)(sizeof(message) - 1U),
-                            5U);
+    VOFA_Process(&vofa, &motor[2]);
+    (void)VOFA_SendTelemetry(&vofa, &motor[2], HAL_GetTick());
     vTaskDelayUntil(&last_wake_time, period);
   }
   /* USER CODE END print */
