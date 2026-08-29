@@ -8,22 +8,21 @@
 
 #define GM6020_ENCODER_RESOLUTION       8192
 #define GM6020_ENCODER_HALF_RANGE       (GM6020_ENCODER_RESOLUTION / 2)
-#define GM6020_FEEDBACK_STD_ID          0x205U
-#define GM6020_CONTROL_STD_ID           0x1FFU
+#define GM6020_FEEDBACK_STD_ID          0x206U
+#define GM6020_CONTROL_STD_ID           0x1FE
 #define GM6020_FEEDBACK_TIMEOUT_MS      100U
 #define GM6020_TARGET_ANGLE_DEG         90.0f
 #define GM6020_CONTROL_PERIOD_S         0.002f
 #define GM6020_ANGLE_PID_OUTPUT_LIMIT   320.0f
-#define GM6020_SPEED_COMMAND_LIMIT_RPM  320.0f
+#define GM6020_SPEED_COMMAND_LIMIT_RPM  200.0f
 #define GM6020_CONTROL_OUTPUT_LIMIT     30000.0f
 
 #define GM6020_ANGLE_KP                 0.0f
 #define GM6020_ANGLE_KI                 0.0f
 #define GM6020_ANGLE_KD                 0.0f
-#define GM6020_SPEED_KP                 0.0f
-#define GM6020_SPEED_KI                 0.0f
+#define GM6020_SPEED_KP                 20.0f
+#define GM6020_SPEED_KI                 0.5f
 #define GM6020_SPEED_KD                 0.0f
-
 typedef enum {
     GM6020_MODE_PROTECT = 0,
     GM6020_MODE_SPEED = 1,

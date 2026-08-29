@@ -117,7 +117,17 @@ HAL_StatusTypeDef VOFA_SendTelemetry(Vofa_t *instance,
     }
 
     GM6020_GetTelemetry(gm6020, now_ms, &telemetry);
-
+    if (telemetry.feedback_online == 0U) {
+        instance->display_speed_rpm = 0.0f;
+        instance->display_speed_initialized = 0U;
+    } else if (instance->display_speed_initialized == 0U) {
+        instance->display_speed_rpm = telemetry.speed_rpm;
+        instance->display_speed_initialized = 1U;
+    } else {
+        instance->display_speed_rpm +=
+            VOFA_DISPLAY_SPEED_ALPHA
+            * (telemetry.speed_rpm - instance->display_speed_rpm);
+    }
     /* FireWater channels: target angle, angle, target speed, speed, mode,
      * control output and feedback online state. */
     length = snprintf(buffer,
@@ -126,7 +136,7 @@ HAL_StatusTypeDef VOFA_SendTelemetry(Vofa_t *instance,
                       (double)telemetry.target_angle_deg,
                       (double)telemetry.relative_angle_deg,
                       (double)telemetry.target_speed_rpm,
-                      (double)telemetry.speed_rpm,
+                      (double)instance->display_speed_rpm,
                       (unsigned int)telemetry.mode,
                       (double)telemetry.control_output,
                       (unsigned int)telemetry.feedback_online);

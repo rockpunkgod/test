@@ -33,7 +33,7 @@ void canio_init(void)
     filter.FilterMaskIdLow      = 0x0000;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;             /* 绑定 FIFO0 */
     filter.FilterActivation     = ENABLE;
-    filter.SlaveStartFilterBank = 0;                        /* 仅 CAN1 使用 */
+    filter.SlaveStartFilterBank = 14;                        /* 仅 CAN1 使用 */
 
     if (HAL_CAN_ConfigFilter(&hcan1, &filter) != HAL_OK) {
         Error_Handler();
@@ -64,7 +64,7 @@ HAL_StatusTypeDef canio_send(const CanMsg_t *msg)
     /* 构造发送帧头 */
     if (msg->is_ext) {
         tx_header.IDE   = CAN_ID_EXT;
-        tx_header.ExtId = msg->id & 0x1FFFFFFF;
+        tx_header.ExtId = msg->id & 0x1FFFFFFFU;
     } else {
         tx_header.IDE   = CAN_ID_STD;
         tx_header.StdId = msg->id & 0x7FF;

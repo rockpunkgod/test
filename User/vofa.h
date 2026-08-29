@@ -1,6 +1,6 @@
 #ifndef CAN_DEMO_VOFA_H
 #define CAN_DEMO_VOFA_H
-
+#define VOFA_DISPLAY_SPEED_ALPHA  0.2f
 #include "gm6020.h"
 
 #include <stdint.h>
@@ -11,6 +11,8 @@
 typedef struct {
     UART_HandleTypeDef *uart;
     uint8_t rx_byte;
+    float display_speed_rpm;
+    uint8_t display_speed_initialized;
     volatile char command_line[VOFA_COMMAND_MAX_LEN];
     volatile uint8_t command_length;
     volatile uint8_t command_ready;

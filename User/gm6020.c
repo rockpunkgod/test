@@ -228,9 +228,9 @@ int16_t GM6020_CalculateControl(GM6020_t *gm6020, uint32_t now_ms)
     }
 
     control_output = PID_Calculate(&gm6020->speed_pid,
-                                   gm6020->target_speed_rpm,
-                                   speed_rpm,
-                                   GM6020_CONTROL_PERIOD_S);
+                               gm6020->target_speed_rpm,
+                               speed_rpm,
+                               GM6020_CONTROL_PERIOD_S);
     control_output = GM6020_Clamp(control_output, GM6020_CONTROL_OUTPUT_LIMIT);
     gm6020->control_output = control_output;
 
