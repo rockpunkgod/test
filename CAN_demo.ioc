@@ -2,13 +2,16 @@
 CAD.formats=
 CAD.pinconfig=
 CAD.provider=
+CAN1.ABOM=DISABLE
 CAN1.BS1=CAN_BS1_9TQ
 CAN1.BS2=CAN_BS2_4TQ
 CAN1.CalculateBaudRate=1000000
 CAN1.CalculateTimeBit=1000
 CAN1.CalculateTimeQuantum=71.42857142857143
-CAN1.IPParameters=CalculateTimeQuantum,CalculateTimeBit,CalculateBaudRate,BS1,BS2,Prescaler
+CAN1.IPParameters=CalculateTimeQuantum,CalculateTimeBit,CalculateBaudRate,BS1,BS2,Prescaler,ABOM,NART,RFLM
+CAN1.NART=DISABLE
 CAN1.Prescaler=3
+CAN1.RFLM=DISABLE
 FREERTOS.FootprintOK=true
 FREERTOS.INCLUDE_vTaskDelayUntil=1
 FREERTOS.IPParameters=Tasks01,configENABLE_FPU,INCLUDE_vTaskDelayUntil,FootprintOK,configUSE_NEWLIB_REENTRANT
