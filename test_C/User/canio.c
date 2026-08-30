@@ -1,7 +1,7 @@
 /**
  * @file    canio.c
  * @brief   CAN 总线收发实现
- *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 1Mbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
+ *          PD0=CAN1_RX, PD1=CAN1_TX, 波特率 1Mbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
  */
 
 #include "canio.h"
@@ -19,7 +19,7 @@ void canio_init(void)
     /* ---- 配置 CAN 滤波器 ---- */
     CAN_FilterTypeDef filter = {0};
 
-    /* 滤波器组 0，分配给 FIFO0 */
+    /* CAN1 使用 0~13，CAN2 使用 14~27；本工程只启用 CAN1。 */
     filter.FilterBank           = 0;
     filter.FilterMode           = CAN_FILTERMODE_IDMASK;    /* 掩码模式 */
     filter.FilterScale          = CAN_FILTERSCALE_32BIT;    /* 32 位 */
@@ -29,7 +29,7 @@ void canio_init(void)
     filter.FilterMaskIdLow      = 0x0000;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;             /* 绑定 FIFO0 */
     filter.FilterActivation     = ENABLE;
-    filter.SlaveStartFilterBank = 0;                        /* 仅 CAN1 使用 */
+    filter.SlaveStartFilterBank = 14;                       /* 0~13 属于 CAN1 */
 
     if (HAL_CAN_ConfigFilter(&hcan1, &filter) != HAL_OK) {
         Error_Handler();

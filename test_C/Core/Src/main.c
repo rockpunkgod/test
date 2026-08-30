@@ -45,7 +45,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan1;
-UART_HandleTypeDef huart1;
+
+UART_HandleTypeDef huart6;
 
 osThreadId commTaskHandle;
 osThreadId printTaskHandle;
@@ -56,8 +57,8 @@ osThreadId printTaskHandle;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART6_UART_Init(void);
 static void MX_CAN1_Init(void);
-static void MX_USART1_UART_Init(void);
 void Comm_task(void const * argument);
 void print(void const * argument);
 
@@ -99,8 +100,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART6_UART_Init();
   MX_CAN1_Init();
-  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   BoardComm_Init();
@@ -108,7 +109,8 @@ int main(void)
   /* 初始化 CAN 通信模块（配置滤波器、启动外设、使能中断） */
   canio_init();
 
-  if (VOFA_Init(&vofa, &huart1) != HAL_OK)
+  /* USART6：PG14 = TX，PG9 = RX，115200 8N1。 */
+  if (VOFA_Init(&vofa, &huart6) != HAL_OK)
   {
     Error_Handler();
   }
@@ -132,11 +134,11 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* 通信任务：处理角色分配、业务请求、回复和心跳。 */
+  /* definition and creation of commTask */
   osThreadDef(commTask, Comm_task, osPriorityAboveNormal, 0, 256);
   commTaskHandle = osThreadCreate(osThread(commTask), NULL);
 
-  /* 串口任务：解析上位机命令，并由A板统一输出遥测。 */
+  /* definition and creation of printTask */
   osThreadDef(printTask, print, osPriorityNormal, 0, 512);
   printTaskHandle = osThreadCreate(osThread(printTask), NULL);
 
@@ -243,24 +245,36 @@ static void MX_CAN1_Init(void)
 }
 
 /**
-  * @brief USART1 Initialization Function
+  * @brief USART6 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART1_UART_Init(void)
+static void MX_USART6_UART_Init(void)
 {
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+
+  /* USER CODE BEGIN USART6_Init 0 */
+
+  /* USER CODE END USART6_Init 0 */
+
+  /* USER CODE BEGIN USART6_Init 1 */
+
+  /* USER CODE END USART6_Init 1 */
+  huart6.Instance = USART6;
+  huart6.Init.BaudRate = 115200;
+  huart6.Init.WordLength = UART_WORDLENGTH_8B;
+  huart6.Init.StopBits = UART_STOPBITS_1;
+  huart6.Init.Parity = UART_PARITY_NONE;
+  huart6.Init.Mode = UART_MODE_TX_RX;
+  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart6) != HAL_OK)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN USART6_Init 2 */
+
+  /* USER CODE END USART6_Init 2 */
+
 }
 
 /**
@@ -275,8 +289,9 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -297,16 +312,17 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_Comm_task */
 __weak void Comm_task(void const * argument)
 {
-  /* USER CODE BEGIN Comm_task */
+  /* USER CODE BEGIN 5 */
   TickType_t last_wake_time = xTaskGetTickCount();
   const TickType_t period = pdMS_TO_TICKS(10U);
 
   for(;;)
   {
+    /* 推进角色分配、心跳、请求和回复状态机。 */
     BoardComm_Process(HAL_GetTick());
     vTaskDelayUntil(&last_wake_time, period);
   }
-  /* USER CODE END Comm_task */
+  /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_print */
