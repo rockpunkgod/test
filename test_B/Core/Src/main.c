@@ -341,7 +341,7 @@ __weak void Gimbal_task(void const * argument)
 
   for(;;)
   {
-    /* Calculate Yaw/Pitch and send one shared 0x1FF frame every 2 ms. */
+    /* Calculate Yaw/Pitch and send one shared 0x1FE frame every 2 ms. */
     (void)Gimbal_Control(HAL_GetTick());
     vTaskDelayUntil(&last_wake_time, period);
   }

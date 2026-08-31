@@ -1,7 +1,7 @@
 /**
  * @file    canio.c
  * @brief   CAN 总线收发实现
- *          PB8=CAN1_RX, PB9=CAN1_TX, 波特率 1Mbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
+ *          PD0=CAN1_RX, PD1=CAN1_TX, 波特率 1Mbps (APB1=42MHz, Pre=3, BS1=9TQ, BS2=4TQ)
  */
 
 #include "canio.h"

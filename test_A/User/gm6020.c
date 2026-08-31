@@ -39,7 +39,6 @@ void GM6020_Init(GM6020_t *gm6020, uint8_t motor_id)
     gm6020->command_angle_deg = GM6020_TARGET_ANGLE_DEG;
     gm6020->target_angle_deg = GM6020_TARGET_ANGLE_DEG;
 
-    /* Parameters intentionally remain zero until safe bench tuning begins. */
     PID_Init(&gm6020->angle_pid,
              GM6020_ANGLE_KP,
              GM6020_ANGLE_KI,
