@@ -9,7 +9,7 @@
 - `test_C/`：C 题双开发板 CAN 通信、角色分配、握手及角度/弧度换算工程。
 - `成果展示/`：A、B、C 三道题的图片和视频。
 
-公开 Git 仓库：<https://github.com/rockpunkgod/test_demo_A>
+公开 Git 仓库：<https://github.com/rockpunkgod/test>
 
 ## A 题完成情况
 
