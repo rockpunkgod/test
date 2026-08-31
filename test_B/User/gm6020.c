@@ -217,6 +217,8 @@ int16_t GM6020_CalculateControl(GM6020_t *gm6020, uint32_t now_ms)
     float relative_angle;
     float speed_rpm;
     float control_output;
+    float distance_to_limit;
+    float braking_speed_limit;
 
     if (gm6020 == NULL) {
         return 0;
@@ -286,12 +288,33 @@ int16_t GM6020_CalculateControl(GM6020_t *gm6020, uint32_t now_ms)
         gm6020->target_speed_rpm = GM6020_Clamp(gm6020->target_speed_rpm,
                                                 gm6020->max_speed_rpm);
 
-        /* At a boundary, only permit a command that drives back inward. */
-        if (((relative_angle >= gm6020->max_angle_deg)
-             && (gm6020->target_speed_rpm > 0.0f))
-            || ((relative_angle <= gm6020->min_angle_deg)
-                && (gm6020->target_speed_rpm < 0.0f))) {
-            gm6020->target_speed_rpm = 0.0f;
+        /* Slow down before the boundary so speed mode does not brake too late. */
+        if (gm6020->target_speed_rpm > 0.0f) {
+            distance_to_limit = gm6020->max_angle_deg - relative_angle;
+            if (distance_to_limit <= 0.0f) {
+                gm6020->target_speed_rpm = 0.0f;
+                PID_Reset(&gm6020->speed_pid);
+            } else if (distance_to_limit < GM6020_LIMIT_BRAKE_ZONE_DEG) {
+                braking_speed_limit = gm6020->max_speed_rpm
+                    * distance_to_limit / GM6020_LIMIT_BRAKE_ZONE_DEG;
+                if (gm6020->target_speed_rpm > braking_speed_limit) {
+                    gm6020->target_speed_rpm = braking_speed_limit;
+                    PID_Reset(&gm6020->speed_pid);
+                }
+            }
+        } else if (gm6020->target_speed_rpm < 0.0f) {
+            distance_to_limit = relative_angle - gm6020->min_angle_deg;
+            if (distance_to_limit <= 0.0f) {
+                gm6020->target_speed_rpm = 0.0f;
+                PID_Reset(&gm6020->speed_pid);
+            } else if (distance_to_limit < GM6020_LIMIT_BRAKE_ZONE_DEG) {
+                braking_speed_limit = gm6020->max_speed_rpm
+                    * distance_to_limit / GM6020_LIMIT_BRAKE_ZONE_DEG;
+                if (gm6020->target_speed_rpm < -braking_speed_limit) {
+                    gm6020->target_speed_rpm = -braking_speed_limit;
+                    PID_Reset(&gm6020->speed_pid);
+                }
+            }
         }
     }
 
@@ -300,6 +323,17 @@ int16_t GM6020_CalculateControl(GM6020_t *gm6020, uint32_t now_ms)
                                    speed_rpm,
                                    GM6020_CONTROL_PERIOD_S);
     control_output = GM6020_Clamp(control_output, GM6020_CONTROL_OUTPUT_LIMIT);
+
+    /* Never apply torque farther outside an enabled software boundary. */
+    if ((gm6020->software_limit_enabled != 0U)
+        && (((relative_angle >= gm6020->max_angle_deg)
+             && (control_output > 0.0f))
+            || ((relative_angle <= gm6020->min_angle_deg)
+                && (control_output < 0.0f)))) {
+        PID_Reset(&gm6020->speed_pid);
+        control_output = 0.0f;
+    }
+
     gm6020->control_output = control_output;
 
     if (control_output >= 0.0f) {
